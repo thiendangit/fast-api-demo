@@ -18,4 +18,3 @@ class Blog(BaseModel):
 @app.post("/blog")
 async def create_blog(blog: Blog):
     return {"message": f"Hello {blog.timestamp}"}
-

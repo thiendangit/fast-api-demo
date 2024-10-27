@@ -13,9 +13,9 @@ async def lifespan(_):
     yield
 app = FastAPI(lifespan=lifespan)
 
-@app.get("/blogs", status_code=200)
+@app.get("/blogs", status_code=200 ,response_model=list[schemas.ShowBlg])
 def get_blogs_list(session: SessionDep, offset: int = 0,
-              limit: Annotated[int, Query(le=10)] = 10) -> list[schemas.Blog]:
+              limit: Annotated[int, Query(le=10)] = 10):
     return session.query(schemas.Blog).limit(limit).offset(offset).all()
 
 @app.get("/blog/{id}", status_code=200)
@@ -26,7 +26,7 @@ def get_blog_by_id(id: str, response: Response, session: SessionDep) -> dict[str
         return {'detail': f'Blog with id = {id} does not exist'}
     return  blog
 
-@app.post("/blog", status_code=200)
+@app.post("/blog", status_code=200, response_model=schemas.Blog)
 def create_blog(blog: schemas.BlogBase, session: SessionDep) -> schemas.Blog:
     db_blog = schemas.Blog.model_validate(blog)
     session.add(db_blog)
@@ -50,9 +50,17 @@ def update_blog(id: str, blogParam: schemas.BlogBase, response: Response, sessio
     if not blog:
         response.status_code = status.HTTP_404_NOT_FOUND
         return {'detail': f'Blog with id = {id} does not exist'}
-    blog_data = blogParam.model_dump(exclude_unset=True)
+    blog_data = blogParam.model(exclude_unset=True)
     blog.sqlmodel_update(blog_data)
     session.add(blog)
     session.commit()
     session.refresh(blog)
     return blog
+
+@app.post('/user')
+def create_user(user: schemas.UserBase, session: SessionDep) -> schemas.User:
+    db_user = schemas.User.model_validate(user)
+    session.add(db_user)
+    session.commit()
+    session.refresh(db_user)
+    return db_user
