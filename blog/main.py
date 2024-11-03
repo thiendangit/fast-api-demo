@@ -3,8 +3,9 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI, Query, Response, status
 
 from blog import schemas
-from typing import Annotated, Dict, Any
+from typing import Annotated, Any
 
+from blog.hash import Hash
 from db import create_db_and_tables, SessionDep
 
 @asynccontextmanager
@@ -57,10 +58,27 @@ def update_blog(id: str, blogParam: schemas.BlogBase, response: Response, sessio
     session.refresh(blog)
     return blog
 
-@app.post('/user')
-def create_user(user: schemas.UserBase, session: SessionDep) -> schemas.User:
+@app.post('/user',  status_code=200)
+def create_user(user: schemas.UserBase, session: SessionDep, response: Response) -> schemas.User | dict[str, str]:
+    existing_user = session.query(schemas.User).filter(schemas.User.email == user.email).first()
+
+    if existing_user:
+        response.status_code = status.HTTP_409_CONFLICT
+        return {'detail': f"Email {user.email} is already existed"}
+
+    user.password =  Hash.get_password_hash(user.password)
+
     db_user = schemas.User.model_validate(user)
+
     session.add(db_user)
     session.commit()
     session.refresh(db_user)
     return db_user
+
+@app.get('/user/{id}', status_code=200, response_model=schemas.ShowUser)
+def get_user_by_id(id: str, response: Response, session: SessionDep) -> dict[str, str] | Any:
+    user = session.query(schemas.User).filter(schemas.User.id == id).first()
+    if not user:
+        response.status_code = status.HTTP_404_NOT_FOUND
+        return {'detail': f'User with id = {id} does not exist'}
+    return  user
