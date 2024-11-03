@@ -14,12 +14,12 @@ async def lifespan(_):
     yield
 app = FastAPI(lifespan=lifespan)
 
-@app.get("/blogs", status_code=200 ,response_model=list[schemas.ShowBlg])
+@app.get("/blogs", status_code=200 ,response_model=list[schemas.ShowBlg], tags=["blog"])
 def get_blogs_list(session: SessionDep, offset: int = 0,
               limit: Annotated[int, Query(le=10)] = 10):
     return session.query(schemas.Blog).limit(limit).offset(offset).all()
 
-@app.get("/blog/{id}", status_code=200)
+@app.get("/blog/{id}", status_code=200, tags=["blog"])
 def get_blog_by_id(id: str, response: Response, session: SessionDep) -> dict[str, str] | Any:
     blog = session.query(schemas.Blog).filter(schemas.Blog.id == id).first()
     if not blog:
@@ -27,7 +27,7 @@ def get_blog_by_id(id: str, response: Response, session: SessionDep) -> dict[str
         return {'detail': f'Blog with id = {id} does not exist'}
     return  blog
 
-@app.post("/blog", status_code=200, response_model=schemas.Blog)
+@app.post("/blog", status_code=200, response_model=schemas.Blog, tags=["blog"])
 def create_blog(blog: schemas.BlogBase, session: SessionDep) -> schemas.Blog:
     db_blog = schemas.Blog.model_validate(blog)
     session.add(db_blog)
@@ -35,7 +35,7 @@ def create_blog(blog: schemas.BlogBase, session: SessionDep) -> schemas.Blog:
     session.refresh(db_blog)
     return db_blog
 
-@app.delete("/blog/{id}", status_code=200)
+@app.delete("/blog/{id}", status_code=200, tags=["blog"])
 def delete_blog(id: str, response: Response, session: SessionDep) -> dict[str, str] | Any:
     blog = session.get(schemas.Blog, id)
     if not blog:
@@ -45,7 +45,7 @@ def delete_blog(id: str, response: Response, session: SessionDep) -> dict[str, s
     session.commit()
     return {"ok": True}
 
-@app.patch("/blog/{id}", status_code=200)
+@app.patch("/blog/{id}", status_code=200, tags=["blog"])
 def update_blog(id: str, blogParam: schemas.BlogBase, response: Response, session: SessionDep) -> dict[str, str] | Any:
     blog = session.get(schemas.Blog, id)
     if not blog:
@@ -58,7 +58,7 @@ def update_blog(id: str, blogParam: schemas.BlogBase, response: Response, sessio
     session.refresh(blog)
     return blog
 
-@app.post('/user',  status_code=200)
+@app.post('/user',  status_code=200, tags=["user"])
 def create_user(user: schemas.UserBase, session: SessionDep, response: Response) -> schemas.User | dict[str, str]:
     existing_user = session.query(schemas.User).filter(schemas.User.email == user.email).first()
 
@@ -75,7 +75,7 @@ def create_user(user: schemas.UserBase, session: SessionDep, response: Response)
     session.refresh(db_user)
     return db_user
 
-@app.get('/user/{id}', status_code=200, response_model=schemas.ShowUser)
+@app.get('/user/{id}', status_code=200, response_model=schemas.ShowUser, tags=["user"])
 def get_user_by_id(id: str, response: Response, session: SessionDep) -> dict[str, str] | Any:
     user = session.query(schemas.User).filter(schemas.User.id == id).first()
     if not user:
