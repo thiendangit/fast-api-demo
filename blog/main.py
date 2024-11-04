@@ -1,10 +1,9 @@
 from contextlib import asynccontextmanager
+from typing import Annotated, Any
 
 from fastapi import FastAPI, Query, Response, status
 
 from blog import schemas
-from typing import Annotated, Any
-
 from blog.hash import Hash
 from db import create_db_and_tables, SessionDep
 
@@ -12,11 +11,15 @@ from db import create_db_and_tables, SessionDep
 async def lifespan(_):
     create_db_and_tables()
     yield
+
 app = FastAPI(lifespan=lifespan)
 
-@app.get("/blogs", status_code=200 ,response_model=list[schemas.ShowBlg], tags=["blog"])
-def get_blogs_list(session: SessionDep, offset: int = 0,
-              limit: Annotated[int, Query(le=10)] = 10):
+@app.get("/blogs", status_code=200, response_model=list[schemas.ShowBlg], tags=["blog"])
+def get_blogs_list(
+    session: SessionDep,
+    offset: int = 0,
+    limit: Annotated[int, Query(le=10)] = 10
+):
     return session.query(schemas.Blog).limit(limit).offset(offset).all()
 
 @app.get("/blog/{id}", status_code=200, tags=["blog"])
@@ -25,7 +28,7 @@ def get_blog_by_id(id: str, response: Response, session: SessionDep) -> dict[str
     if not blog:
         response.status_code = status.HTTP_404_NOT_FOUND
         return {'detail': f'Blog with id = {id} does not exist'}
-    return  blog
+    return blog
 
 @app.post("/blog", status_code=200, response_model=schemas.Blog, tags=["blog"])
 def create_blog(blog: schemas.BlogBase, session: SessionDep) -> schemas.Blog:
@@ -46,30 +49,36 @@ def delete_blog(id: str, response: Response, session: SessionDep) -> dict[str, s
     return {"ok": True}
 
 @app.patch("/blog/{id}", status_code=200, tags=["blog"])
-def update_blog(id: str, blogParam: schemas.BlogBase, response: Response, session: SessionDep) -> dict[str, str] | Any:
+def update_blog(
+    id: str,
+    blog_param: schemas.BlogBase,
+    response: Response,
+    session: SessionDep
+) -> dict[str, str] | Any:
     blog = session.get(schemas.Blog, id)
     if not blog:
         response.status_code = status.HTTP_404_NOT_FOUND
         return {'detail': f'Blog with id = {id} does not exist'}
-    blog_data = blogParam.model(exclude_unset=True)
+    blog_data = blog_param.model(exclude_unset=True)
     blog.sqlmodel_update(blog_data)
     session.add(blog)
     session.commit()
     session.refresh(blog)
     return blog
 
-@app.post('/user',  status_code=200, tags=["user"])
-def create_user(user: schemas.UserBase, session: SessionDep, response: Response) -> schemas.User | dict[str, str]:
+@app.post('/user', status_code=200, tags=["user"])
+def create_user(
+    user: schemas.UserBase,
+    session: SessionDep,
+    response: Response
+) -> schemas.User | dict[str, str]:
     existing_user = session.query(schemas.User).filter(schemas.User.email == user.email).first()
-
     if existing_user:
         response.status_code = status.HTTP_409_CONFLICT
         return {'detail': f"Email {user.email} is already existed"}
 
-    user.password =  Hash.get_password_hash(user.password)
-
+    user.password = Hash.get_password_hash(user.password)
     db_user = schemas.User.model_validate(user)
-
     session.add(db_user)
     session.commit()
     session.refresh(db_user)
@@ -81,4 +90,4 @@ def get_user_by_id(id: str, response: Response, session: SessionDep) -> dict[str
     if not user:
         response.status_code = status.HTTP_404_NOT_FOUND
         return {'detail': f'User with id = {id} does not exist'}
-    return  user
+    return user
