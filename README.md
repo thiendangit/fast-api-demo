@@ -5,6 +5,6 @@ run
 source venv/bin/activate
 ```
 
-```python 
+```python
 fastapi dev blog/main.py
 ```
