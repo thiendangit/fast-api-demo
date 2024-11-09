@@ -8,3 +8,4 @@ uvicorn
 sqlmodel
 pyjwt
 passlib[bcrypt]
+pydantic[email]
